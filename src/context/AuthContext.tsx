@@ -13,6 +13,7 @@ interface AuthContextType {
   isAdmin: () => boolean;
   isEditor: () => boolean;
   isContributor: () => boolean;
+  signup: (email: string, password: string, metadata?: { [key: string]: any }) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,6 +58,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signup = async (email: string, password: string, metadata?: { [key: string]: any }) => {
+    try {
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: metadata
+        }
+      });
+      return { error };
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error('An unknown error occurred') };
+    }
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     navigate('/admin/login');
@@ -76,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, login, logout, isAdmin, isEditor, isContributor }}>
+    <AuthContext.Provider value={{ user, session, isLoading, login, logout, isAdmin, isEditor, isContributor, signup }}>
       {children}
     </AuthContext.Provider>
   );
