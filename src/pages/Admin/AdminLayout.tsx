@@ -10,9 +10,12 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  FileImage,
+  FileEdit
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { useAuth } from "@/context/AuthContext";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -20,26 +23,39 @@ interface AdminLayoutProps {
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const navigate = useNavigate();
+  const { logout, user, isAdmin, isEditor } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleLogout = () => {
-    // In a real app, this would call an API to logout
-    localStorage.removeItem("adminLoggedIn");
+  const handleLogout = async () => {
+    await logout();
     toast.success("Logged out successfully");
-    navigate("/admin/login");
   };
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  // Get the user role from metadata
+  const userRole = user?.user_metadata?.role || "contributor";
+  
+  // Base navigation items that everyone can see
   const navItems = [
     { name: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" />, path: "/admin/dashboard" },
     { name: "Blog Posts", icon: <FileText className="w-5 h-5" />, path: "/admin/posts" },
-    { name: "Comments", icon: <MessageSquare className="w-5 h-5" />, path: "/admin/comments" },
-    { name: "Users", icon: <Users className="w-5 h-5" />, path: "/admin/users" },
-    { name: "Settings", icon: <Settings className="w-5 h-5" />, path: "/admin/settings" },
+    { name: "Chatbot Knowledge", icon: <MessageSquare className="w-5 h-5" />, path: "/admin/chatbot" },
+    { name: "Media Library", icon: <FileImage className="w-5 h-5" />, path: "/admin/media" },
   ];
+  
+  // Items for editors and admins only
+  if (isEditor()) {
+    navItems.push({ name: "Pages", icon: <FileEdit className="w-5 h-5" />, path: "/admin/pages" });
+  }
+  
+  // Items for admins only
+  if (isAdmin()) {
+    navItems.push({ name: "Users", icon: <Users className="w-5 h-5" />, path: "/admin/users" });
+    navItems.push({ name: "Settings", icon: <Settings className="w-5 h-5" />, path: "/admin/settings" });
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -72,6 +88,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </div>
           </div>
 
+          <div className="px-6 py-4 border-b">
+            <div className="font-medium">{user?.email}</div>
+            <div className="text-xs text-gray-500 capitalize">Role: {userRole}</div>
+          </div>
+
           <nav className="flex-grow py-6 px-3">
             <ul className="space-y-1">
               {navItems.map((item) => (
@@ -95,7 +116,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </ul>
           </nav>
 
-          <div className="p-4 border-t">
+          <div className="p-4 border-t mt-auto">
             <Button 
               variant="outline" 
               className="w-full flex items-center gap-2"

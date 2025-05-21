@@ -9,7 +9,195 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      chatbot_knowledge: {
+        Row: {
+          answer: string
+          created_at: string
+          created_by: string
+          id: string
+          question: string
+          source_link: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          created_by: string
+          id?: string
+          question: string
+          source_link?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          question?: string
+          source_link?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chatbot_queries: {
+        Row: {
+          answered: boolean | null
+          created_at: string
+          id: string
+          query: string
+        }
+        Insert: {
+          answered?: boolean | null
+          created_at?: string
+          id?: string
+          query: string
+        }
+        Update: {
+          answered?: boolean | null
+          created_at?: string
+          id?: string
+          query?: string
+        }
+        Relationships: []
+      }
+      media: {
+        Row: {
+          file_path: string
+          file_size: number
+          file_type: string
+          filename: string
+          id: string
+          tags: string[] | null
+          uploaded_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          file_path: string
+          file_size: number
+          file_type: string
+          filename: string
+          id?: string
+          tags?: string[] | null
+          uploaded_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          filename?: string
+          id?: string
+          tags?: string[] | null
+          uploaded_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
+      pages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          last_updated_by: string
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          last_updated_by: string
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          last_updated_by?: string
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          author_id: string
+          category: string | null
+          content: string
+          cover_image: string | null
+          created_at: string
+          excerpt: string | null
+          id: string
+          published_at: string | null
+          slug: string
+          status: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          category?: string | null
+          content: string
+          cover_image?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          published_at?: string | null
+          slug: string
+          status?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          category?: string | null
+          content?: string
+          cover_image?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          published_at?: string | null
+          slug?: string
+          status?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -14,7 +13,11 @@ import {
   ResponsiveContainer 
 } from "recharts";
 import AdminLayout from "./AdminLayout";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
+// Sample chart data (will be replaced with real data)
 const chartData = [
   { name: "Jan", visitors: 1200, blogViews: 800 },
   { name: "Feb", visitors: 1400, blogViews: 1000 },
@@ -24,16 +27,45 @@ const chartData = [
 ];
 
 const Dashboard = () => {
-  const navigate = useNavigate();
+  const { user, isAdmin } = useAuth();
+  const [posts, setPosts] = useState<any[]>([]);
+  const [chatbotQueries, setChatbotQueries] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // This would be replaced by an actual auth check in a real app
   useEffect(() => {
-    // Check if user is logged in (simulated)
-    const isLoggedIn = localStorage.getItem("adminLoggedIn") === "true";
-    if (!isLoggedIn) {
-      navigate("/admin/login");
-    }
-  }, [navigate]);
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Fetch latest posts
+        const { data: postsData, error: postsError } = await supabase
+          .from('posts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(4);
+        
+        if (postsError) throw postsError;
+        setPosts(postsData || []);
+        
+        // Fetch unanswered chatbot queries
+        const { data: queriesData, error: queriesError } = await supabase
+          .from('chatbot_queries')
+          .select('*')
+          .eq('answered', false)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (queriesError) throw queriesError;
+        setChatbotQueries(queriesData || []);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, [user]);
   
   return (
     <AdminLayout>
@@ -57,7 +89,7 @@ const Dashboard = () => {
           
           <Card>
             <CardContent className="p-6">
-              <div className="text-3xl font-bold text-ghana-green">27</div>
+              <div className="text-3xl font-bold text-ghana-green">{posts.length}</div>
               <p className="text-sm text-gray-500">Blog Posts Published</p>
               <div className="text-sm text-green-600 mt-2">↑ 5 new this month</div>
             </CardContent>
@@ -73,8 +105,8 @@ const Dashboard = () => {
           
           <Card>
             <CardContent className="p-6">
-              <div className="text-3xl font-bold text-ghana-green">125</div>
-              <p className="text-sm text-gray-500">Chatbot Conversations</p>
+              <div className="text-3xl font-bold text-ghana-green">{chatbotQueries.length}</div>
+              <p className="text-sm text-gray-500">Chatbot Queries</p>
               <div className="text-sm text-green-600 mt-2">↑ 18% engagement rate</div>
             </CardContent>
           </Card>
@@ -104,26 +136,28 @@ const Dashboard = () => {
               <CardTitle>Recent Activities</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[
-                  { action: "New post published", details: "Climate-Smart Agriculture Success in Northern Ghana", time: "10 minutes ago" },
-                  { action: "Comment received", details: "on 'Ghana's Progress on NDC Implementation'", time: "35 minutes ago" },
-                  { action: "Newsletter sent", details: "May 2025 Climate Updates", time: "2 hours ago" },
-                  { action: "User registration", details: "New admin user added", time: "Yesterday" },
-                  { action: "Chatbot data updated", details: "Added new climate policy information", time: "Yesterday" },
-                ].map((activity, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="font-medium">{activity.action}</p>
-                        <p className="text-sm text-gray-500">{activity.details}</p>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-ghana-green border-t-transparent"></div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {posts.slice(0, 5).map((post, i) => (
+                    <div key={i}>
+                      <div className="flex justify-between">
+                        <div>
+                          <p className="font-medium">New post: {post.title}</p>
+                          <p className="text-sm text-gray-500">{post.status === 'published' ? 'Published' : 'Draft'}</p>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {new Date(post.created_at).toLocaleDateString()}
+                        </span>
                       </div>
-                      <span className="text-xs text-gray-500">{activity.time}</span>
+                      {i < 4 && <Separator className="mt-4" />}
                     </div>
-                    {i < 4 && <Separator className="mt-4" />}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -134,68 +168,105 @@ const Dashboard = () => {
               <CardTitle>Recent Blog Posts</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[
-                  { title: "Ghana's Progress on NDC Implementation", status: "Published", date: "May 15, 2025", views: 245 },
-                  { title: "Climate-Smart Agriculture Success in Northern Ghana", status: "Published", date: "May 10, 2025", views: 182 },
-                  { title: "Youth Climate Advocates Launch Urban Tree Planting Campaign", status: "Published", date: "May 5, 2025", views: 136 },
-                  { title: "Coastal Communities Adaptation Workshop Series", status: "Draft", date: "Not published", views: 0 },
-                ].map((post, i) => (
-                  <div key={i} className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{post.title}</p>
-                      <div className="flex gap-3 text-sm text-gray-500">
-                        <span>{post.status}</span>
-                        <span>•</span>
-                        <span>{post.date}</span>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-ghana-green border-t-transparent"></div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {posts.map((post, i) => (
+                    <div key={i} className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">{post.title}</p>
+                        <div className="flex gap-3 text-sm text-gray-500">
+                          <span>{post.status}</span>
+                          <span>•</span>
+                          <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-sm">{post.views || 0} views</span>
+                        <Button variant="outline" size="sm">Edit</Button>
                       </div>
                     </div>
-                    <div className="flex gap-2 items-center">
-                      <span className="text-sm">{post.views} views</span>
-                      <Button variant="outline" size="sm">Edit</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader>
-              <CardTitle>Chatbot Stats</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle>Chatbot Queries</CardTitle>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="sm">View All</Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+                    <SheetHeader>
+                      <SheetTitle>Unanswered Chatbot Queries</SheetTitle>
+                      <SheetDescription>
+                        These are questions that users have asked the chatbot but didn't receive satisfactory answers.
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6 space-y-4">
+                      {chatbotQueries.map((query, i) => (
+                        <Card key={i}>
+                          <CardContent className="p-4">
+                            <p className="font-medium">{query.query}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(query.created_at).toLocaleString()}
+                            </p>
+                            <div className="flex gap-2 mt-2">
+                              <Button variant="default" size="sm" className="bg-ghana-green hover:bg-ghana-green/90">
+                                Add to Knowledge Base
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium">Top Questions</p>
-                  <ol className="list-decimal pl-5 text-sm text-gray-600 mt-2 space-y-2">
-                    <li>What are Ghana's climate policies?</li>
-                    <li>How does climate change affect agriculture?</li>
-                    <li>What is Ghana's NDC commitment?</li>
-                    <li>How can I join climate initiatives?</li>
-                    <li>What are adaptation strategies?</li>
-                  </ol>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-ghana-green border-t-transparent"></div>
                 </div>
-                
-                <Separator />
-                
-                <div>
-                  <p className="text-sm font-medium">Satisfaction Rate</p>
-                  <div className="mt-2">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span>Positive responses</span>
-                      <span>82%</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full">
-                      <div className="h-2 bg-ghana-green rounded-full" style={{ width: "82%" }}></div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium">Top Questions</p>
+                    <ol className="list-decimal pl-5 text-sm text-gray-600 mt-2 space-y-2">
+                      {chatbotQueries.slice(0, 5).map((query, i) => (
+                        <li key={i}>{query.query}</li>
+                      ))}
+                    </ol>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <p className="text-sm font-medium">Satisfaction Rate</p>
+                    <div className="mt-2">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>Answered Queries</span>
+                        <span>68%</span>
+                      </div>
+                      <div className="h-2 bg-gray-200 rounded-full">
+                        <div className="h-2 bg-ghana-green rounded-full" style={{ width: "68%" }}></div>
+                      </div>
                     </div>
                   </div>
+                  
+                  <Button className="w-full bg-ghana-green hover:bg-ghana-green/90">
+                    Update Chatbot Knowledge
+                  </Button>
                 </div>
-                
-                <Button className="w-full bg-ghana-green hover:bg-ghana-green/90">
-                  Update Chatbot Knowledge
-                </Button>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>

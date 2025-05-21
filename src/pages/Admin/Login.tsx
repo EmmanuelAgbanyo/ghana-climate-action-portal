@@ -1,39 +1,48 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
+import { useAuth } from "@/context/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login, user } = useAuth();
+  
   const [credentials, setCredentials] = useState({
     email: "",
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/admin/dashboard");
+    }
+  }, [user, navigate]);
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setCredentials((prev) => ({ ...prev, [name]: value }));
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, validate against backend
-      if (credentials.email === "admin@cic-ghana.org" && credentials.password === "admin123") {
-        toast.success("Login successful!");
-        navigate("/admin/dashboard");
-      } else {
-        toast.error("Invalid email or password");
-      }
-      setIsLoading(false);
-    }, 1000);
+    const { error } = await login(credentials.email, credentials.password);
+    
+    if (error) {
+      toast.error("Login failed: " + error.message);
+    } else {
+      toast.success("Login successful!");
+      // No need to navigate here - the auth context will handle it
+    }
+    
+    setIsLoading(false);
   };
 
   return (
@@ -91,7 +100,7 @@ const Login = () => {
         </CardContent>
         <CardFooter>
           <p className="text-center text-sm text-gray-500 w-full">
-            Demo credentials: admin@cic-ghana.org / admin123
+            For test login, please contact your administrator
           </p>
         </CardFooter>
       </Card>
