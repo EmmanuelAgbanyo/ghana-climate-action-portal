@@ -15,6 +15,8 @@ import BlogPost from "./pages/BlogPost";
 import Contact from "./pages/Contact";
 import Login from "./pages/Admin/Login";
 import Dashboard from "./pages/Admin/Dashboard";
+import Posts from "./pages/Admin/Posts";
+import ChatbotManager from "./pages/Admin/ChatbotManager";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -43,6 +45,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/posts" 
+              element={
+                <ProtectedRoute>
+                  <Posts />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/chatbot" 
+              element={
+                <ProtectedRoute>
+                  <ChatbotManager />
                 </ProtectedRoute>
               } 
             />

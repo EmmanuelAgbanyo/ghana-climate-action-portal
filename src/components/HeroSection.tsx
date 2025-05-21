@@ -14,23 +14,24 @@ interface HeroSectionProps {
 const HeroSection = ({
   title,
   subtitle,
-  backgroundImage,
+  backgroundImage = "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&q=80&w=1920&h=1080",
   children,
   buttonText,
   buttonLink = "#",
 }: HeroSectionProps) => {
   const bgStyle = backgroundImage
-    ? { backgroundImage: `url(${backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    ? { 
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${backgroundImage})`, 
+        backgroundSize: 'cover', 
+        backgroundPosition: 'center' 
+      }
     : {};
 
   return (
     <div 
-      className="relative overflow-hidden bg-gradient-to-br from-ghana-green to-ghana-brown min-h-[80vh] flex items-center"
+      className="relative overflow-hidden min-h-[80vh] flex items-center"
       style={bgStyle}
     >
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-      
       <div className="container mx-auto px-4 py-16 relative z-10 text-white">
         <div className="max-w-3xl mx-auto text-center animate-fade-up">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">{title}</h1>

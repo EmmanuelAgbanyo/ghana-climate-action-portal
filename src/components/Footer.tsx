@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Facebook, Instagram, Twitter, Mail } from "lucide-react";
 
@@ -73,9 +72,12 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-gray-600 mt-8 pt-8 text-center">
-          <p>
+          <p className="mb-2">
             © {currentYear} Climate Information Centre - Ghana. By Youth Path Organisation - YPO. 
             Designed by Emmanuel Agbanyo.
+          </p>
+          <p className="text-sm">
+            <Link to="/admin/login" className="text-ghana-gold hover:underline">Admin Portal</Link>
           </p>
         </div>
       </div>
