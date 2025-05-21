@@ -166,8 +166,10 @@ const Posts = () => {
           .update({
             ...formData,
             slug,
-            updated_at: new Date(),
-            published_at: formData.status === "published" ? new Date() : selectedPost.status === "published" ? selectedPost.created_at : null,
+            updated_at: new Date().toISOString(),
+            published_at: formData.status === "published" 
+              ? (selectedPost.status === "published" ? selectedPost.created_at : new Date().toISOString()) 
+              : null,
           })
           .eq("id", selectedPost.id);
 
@@ -181,7 +183,7 @@ const Posts = () => {
             ...formData,
             slug,
             author_id: user?.id,
-            published_at: formData.status === "published" ? new Date() : null,
+            published_at: formData.status === "published" ? new Date().toISOString() : null,
           });
 
         if (error) throw error;

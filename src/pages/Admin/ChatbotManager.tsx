@@ -222,7 +222,7 @@ const ChatbotManager = () => {
             answer: formData.answer,
             source_link: formData.source_link || null,
             tags: formData.tags.length > 0 ? formData.tags : null,
-            updated_at: new Date(),
+            updated_at: new Date().toISOString(),
           })
           .eq("id", selectedEntry.id);
 
