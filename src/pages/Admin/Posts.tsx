@@ -43,6 +43,7 @@ interface Post {
   created_at: string;
   category?: string;
   author_id: string;
+  cover_image?: string;
 }
 
 const Posts = () => {
@@ -52,6 +53,7 @@ const Posts = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -62,6 +64,7 @@ const Posts = () => {
     excerpt: "",
     status: "draft",
     category: "",
+    cover_image: "",
   });
 
   const fetchPosts = async () => {
@@ -95,6 +98,7 @@ const Posts = () => {
       excerpt: "",
       status: "draft",
       category: "",
+      cover_image: "",
     });
     setIsDialogOpen(true);
   };
@@ -108,6 +112,7 @@ const Posts = () => {
       excerpt: post.excerpt || "",
       status: post.status,
       category: post.category || "",
+      cover_image: post.cover_image || "",
     });
     setIsDialogOpen(true);
   };
@@ -152,11 +157,18 @@ const Posts = () => {
     });
   };
 
+  const generateSlugFromTitle = (title: string) => {
+    return title
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, '-');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Generate slug if empty
-    const slug = formData.slug || formData.title.toLowerCase().replace(/\s+/g, "-");
+    const slug = formData.slug || generateSlugFromTitle(formData.title);
     
     try {
       if (selectedPost) {
@@ -182,7 +194,7 @@ const Posts = () => {
           .insert({
             ...formData,
             slug,
-            author_id: user?.id,
+            author_id: user?.id || '',
             published_at: formData.status === "published" ? new Date().toISOString() : null,
           });
 
@@ -198,10 +210,25 @@ const Posts = () => {
     }
   };
 
-  const filteredPosts = posts.filter(post => 
-    post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (post.excerpt && post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const handleFilterChange = (value: string) => {
+    setStatusFilter(value);
+  };
+
+  const handlePreviewPost = (post: Post) => {
+    // Open blog post in a new tab
+    window.open(`/blog/${post.slug}`, '_blank');
+  };
+
+  const filteredPosts = posts.filter(post => {
+    // Filter by search query
+    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (post.excerpt && post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    // Filter by status
+    const matchesStatus = statusFilter === 'all' || post.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <AdminLayout>
@@ -224,7 +251,7 @@ const Posts = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Select defaultValue="all">
+            <Select value={statusFilter} onValueChange={handleFilterChange}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -247,7 +274,7 @@ const Posts = () => {
             {filteredPosts.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-gray-500">
-                  {searchQuery ? "No posts match your search" : "No posts found. Create your first post!"}
+                  {searchQuery || statusFilter !== 'all' ? "No posts match your filters" : "No posts found. Create your first post!"}
                 </CardContent>
               </Card>
             ) : (
@@ -275,7 +302,12 @@ const Posts = () => {
                         )}
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex items-center gap-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex items-center gap-1"
+                          onClick={() => handlePreviewPost(post)}
+                        >
                           <Eye className="h-4 w-4" />
                           <span className="hidden sm:inline">Preview</span>
                         </Button>
@@ -366,6 +398,30 @@ const Posts = () => {
                     onChange={handleInputChange}
                   />
                 </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="cover_image">Cover Image URL</Label>
+                <Input
+                  id="cover_image"
+                  name="cover_image"
+                  value={formData.cover_image}
+                  onChange={handleInputChange}
+                  placeholder="https://example.com/image.jpg"
+                />
+                {formData.cover_image && (
+                  <div className="mt-2 border rounded-md p-2">
+                    <img
+                      src={formData.cover_image}
+                      alt="Cover preview"
+                      className="h-32 object-cover rounded-md"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "https://placehold.co/600x400?text=Invalid+Image+URL";
+                      }}
+                    />
+                  </div>
+                )}
               </div>
               
               <div className="grid gap-2">

@@ -9,17 +9,56 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, ArrowRight } from "lucide-react";
-import { blogPosts, blogCategories } from "../data/blogData";
+import { Search, ArrowRight, Loader2 } from "lucide-react";
+import { blogCategories } from "../data/blogData";
 import { BlogPost } from "../types/blog";
+import { supabase } from "@/integrations/supabase/client";
+
+interface SupabaseBlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string;
+  status: string;
+  created_at: string;
+  published_at?: string;
+  category?: string;
+  author_id: string;
+  cover_image?: string;
+}
 
 const Blog = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>(blogPosts);
+  const [posts, setPosts] = useState<SupabaseBlogPost[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   
+  // Fetch posts from Supabase
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from("posts")
+          .select("*")
+          .eq("status", "published")
+          .order("published_at", { ascending: false });
+
+        if (error) throw error;
+        setPosts(data || []);
+      } catch (err) {
+        console.error("Error fetching blog posts:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
   // Parse URL parameters
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -36,26 +75,19 @@ const Blog = () => {
   }, [location.search]);
   
   // Filter posts based on search and category
+  const filteredPosts = posts.filter(post => {
+    const matchesSearch = !searchQuery || 
+      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (post.excerpt && post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesCategory = !selectedCategory || 
+      (post.category && post.category.toLowerCase() === selectedCategory.toLowerCase());
+    
+    return matchesSearch && matchesCategory;
+  });
+  
+  // Update URL with filters
   useEffect(() => {
-    let filtered = [...blogPosts];
-    
-    if (searchQuery) {
-      filtered = filtered.filter(post => 
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
-    
-    if (selectedCategory) {
-      filtered = filtered.filter(post => 
-        post.category.toLowerCase() === selectedCategory.toLowerCase()
-      );
-    }
-    
-    setFilteredPosts(filtered);
-    
-    // Update URL with filters
     const searchParams = new URLSearchParams();
     if (searchQuery) searchParams.set("search", searchQuery);
     if (selectedCategory) searchParams.set("category", selectedCategory);
@@ -86,6 +118,11 @@ const Blog = () => {
     });
   };
 
+  // Extract unique categories from posts
+  const availableCategories = Array.from(
+    new Set(posts.filter(post => post.category).map(post => post.category))
+  );
+
   return (
     <Layout>
       <HeroSection
@@ -99,62 +136,80 @@ const Blog = () => {
             <SectionTitle 
               title="Latest Articles" 
               subtitle={
-                filteredPosts.length === blogPosts.length 
-                  ? "Stay informed with our latest climate updates"
-                  : filteredPosts.length === 0
-                    ? "No articles found matching your search criteria"
-                    : `Showing ${filteredPosts.length} ${filteredPosts.length === 1 ? 'article' : 'articles'}`
+                isLoading ? "Loading articles..." :
+                filteredPosts.length === 0 ? "No articles found matching your search criteria" :
+                `Showing ${filteredPosts.length} ${filteredPosts.length === 1 ? 'article' : 'articles'}`
               }
               align="left"
             />
             
-            <div className="space-y-8">
-              {filteredPosts.map((post) => (
-                <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="h-60 md:h-full bg-gray-200">
-                      <img 
-                        src={post.coverImage} 
-                        alt={post.title} 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="md:col-span-2 p-6">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Badge className="bg-ghana-green hover:bg-ghana-green/80">
-                          {post.category}
-                        </Badge>
-                        <span className="text-sm text-gray-500">{formatDate(post.publishedAt)}</span>
+            {isLoading ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="h-12 w-12 animate-spin text-ghana-green" />
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {filteredPosts.map((post) => (
+                  <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="h-60 md:h-full bg-gray-200">
+                        <img 
+                          src={post.cover_image || "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=80"} 
+                          alt={post.title} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=80";
+                          }}
+                        />
                       </div>
-                      
-                      <h3 className="text-2xl font-bold mb-3">
-                        <a 
-                          href={`/blog/${post.slug}`}
-                          className="hover:text-ghana-green transition-colors"
-                        >
-                          {post.title}
-                        </a>
-                      </h3>
-                      
-                      <p className="text-gray-600 mb-4">{post.excerpt}</p>
-                      
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-ghana-green rounded-full"></div>
-                          <span className="text-sm font-medium">{post.author}</span>
+                      <div className="md:col-span-2 p-6">
+                        <div className="flex items-center gap-2 mb-3">
+                          {post.category && (
+                            <Badge className="bg-ghana-green hover:bg-ghana-green/80">
+                              {post.category}
+                            </Badge>
+                          )}
+                          <span className="text-sm text-gray-500">
+                            {formatDate(post.published_at || post.created_at)}
+                          </span>
                         </div>
                         
-                        <Button variant="link" className="text-ghana-green flex items-center gap-2 p-0" asChild>
-                          <a href={`/blog/${post.slug}`}>
-                            Read More <ArrowRight size={16} />
+                        <h3 className="text-2xl font-bold mb-3">
+                          <a 
+                            href={`/blog/${post.slug}`}
+                            className="hover:text-ghana-green transition-colors"
+                          >
+                            {post.title}
                           </a>
-                        </Button>
+                        </h3>
+                        
+                        <p className="text-gray-600 mb-4">{post.excerpt || post.content.substring(0, 150) + "..."}</p>
+                        
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-ghana-green rounded-full"></div>
+                            <span className="text-sm font-medium">Admin</span>
+                          </div>
+                          
+                          <Button variant="link" className="text-ghana-green flex items-center gap-2 p-0" asChild>
+                            <a href={`/blog/${post.slug}`}>
+                              Read More <ArrowRight size={16} />
+                            </a>
+                          </Button>
+                        </div>
                       </div>
                     </div>
+                  </Card>
+                ))}
+
+                {filteredPosts.length === 0 && !isLoading && (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">No posts found matching your criteria.</p>
                   </div>
-                </Card>
-              ))}
-            </div>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="space-y-8">
@@ -176,16 +231,21 @@ const Blog = () => {
             <Card className="p-6">
               <h3 className="text-xl font-bold mb-4">Categories</h3>
               <div className="space-y-2">
-                {blogCategories.map((category) => (
-                  <Button 
-                    key={category.slug}
-                    variant={selectedCategory === category.slug ? "secondary" : "outline"}
-                    className="mr-2 mb-2"
-                    onClick={() => handleCategoryClick(category.slug)}
-                  >
-                    {category.name}
-                  </Button>
+                {availableCategories.map((category) => (
+                  category && (
+                    <Button 
+                      key={category}
+                      variant={selectedCategory === category ? "secondary" : "outline"}
+                      className="mr-2 mb-2"
+                      onClick={() => handleCategoryClick(category)}
+                    >
+                      {category}
+                    </Button>
+                  )
                 ))}
+                {availableCategories.length === 0 && (
+                  <p className="text-gray-500">No categories available</p>
+                )}
               </div>
             </Card>
             

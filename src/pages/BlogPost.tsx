@@ -8,28 +8,85 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Facebook, Twitter, Mail, Share2 } from "lucide-react";
-import { getBlogPostBySlug } from "../data/blogData";
+import { ArrowLeft, Facebook, Twitter, Mail, Share2, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string;
+  status: string;
+  created_at: string;
+  published_at?: string;
+  category?: string;
+  author_id: string;
+  cover_image?: string;
+}
 
 const BlogPost = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const [post, setPost] = useState(slug ? getBlogPostBySlug(slug) : null);
+  const [post, setPost] = useState<BlogPost | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [comment, setComment] = useState({ name: "", email: "", content: "" });
+  const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   
   useEffect(() => {
-    if (slug) {
-      const foundPost = getBlogPostBySlug(slug);
-      setPost(foundPost);
+    const fetchPost = async () => {
+      if (!slug) return;
       
-      if (!foundPost) {
-        // Post not found, redirect to blog list
+      try {
+        setIsLoading(true);
+        
+        // Fetch the post by slug
+        const { data, error } = await supabase
+          .from("posts")
+          .select("*")
+          .eq("slug", slug)
+          .eq("status", "published")
+          .single();
+        
+        if (error) {
+          console.error("Error fetching post:", error);
+          navigate("/blog", { replace: true });
+          return;
+        }
+        
+        if (!data) {
+          navigate("/blog", { replace: true });
+          return;
+        }
+        
+        setPost(data);
+        
+        // Fetch related posts in same category
+        if (data.category) {
+          const { data: relatedData, error: relatedError } = await supabase
+            .from("posts")
+            .select("*")
+            .eq("status", "published")
+            .eq("category", data.category)
+            .neq("id", data.id)
+            .limit(3);
+            
+          if (!relatedError && relatedData) {
+            setRelatedPosts(relatedData);
+          }
+        }
+      } catch (err) {
+        console.error("Error processing blog post:", err);
         navigate("/blog", { replace: true });
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+    
+    fetchPost();
   }, [slug, navigate]);
   
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -53,6 +110,16 @@ const BlogPost = () => {
     setComment({ name: "", email: "", content: "" });
   };
   
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center py-32">
+          <Loader2 className="h-12 w-12 animate-spin text-ghana-green" />
+        </div>
+      </Layout>
+    );
+  }
+  
   if (!post) {
     return null;
   }
@@ -74,18 +141,24 @@ const BlogPost = () => {
               <Card className="overflow-hidden">
                 <div className="h-80 bg-gray-200">
                   <img 
-                    src={post.coverImage} 
+                    src={post.cover_image || "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80"} 
                     alt={post.title} 
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80";
+                    }}
                   />
                 </div>
                 
                 <CardContent className="p-8">
                   <div className="flex flex-wrap items-center gap-3 mb-4">
-                    <Badge className="bg-ghana-green hover:bg-ghana-green/80">
-                      {post.category}
-                    </Badge>
-                    <span className="text-sm text-gray-500">{formatDate(post.publishedAt)}</span>
+                    {post.category && (
+                      <Badge className="bg-ghana-green hover:bg-ghana-green/80">
+                        {post.category}
+                      </Badge>
+                    )}
+                    <span className="text-sm text-gray-500">{formatDate(post.published_at || post.created_at)}</span>
                   </div>
                   
                   <h1 className="text-3xl md:text-4xl font-bold mb-6">{post.title}</h1>
@@ -93,8 +166,8 @@ const BlogPost = () => {
                   <div className="flex items-center gap-4 mb-8">
                     <div className="w-12 h-12 bg-ghana-green rounded-full"></div>
                     <div>
-                      <p className="font-medium">{post.author}</p>
-                      <p className="text-sm text-gray-500">{post.authorRole}</p>
+                      <p className="font-medium">Admin</p>
+                      <p className="text-sm text-gray-500">Climate Information Centre</p>
                     </div>
                   </div>
                   
@@ -109,15 +182,16 @@ const BlogPost = () => {
                     <div className="mb-4 md:mb-0">
                       <p className="text-sm font-medium mb-2">Tags:</p>
                       <div>
-                        {post.tags.map((tag) => (
+                        {post.category && (
                           <Badge 
-                            key={tag} 
                             variant="outline"
                             className="mr-2"
                           >
-                            {tag}
+                            {post.category}
                           </Badge>
-                        ))}
+                        )}
+                        <Badge variant="outline" className="mr-2">Climate</Badge>
+                        <Badge variant="outline" className="mr-2">Ghana</Badge>
                       </div>
                     </div>
                     
@@ -190,17 +264,35 @@ const BlogPost = () => {
               <Card className="p-6">
                 <h3 className="text-xl font-bold mb-4">Related Posts</h3>
                 <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex gap-3">
-                      <div className="w-20 h-20 bg-gray-200 flex-shrink-0"></div>
-                      <div>
-                        <h4 className="font-medium mb-1 hover:text-ghana-green transition-colors">
-                          <a href="#">Climate Resilience in Coastal Communities</a>
-                        </h4>
-                        <p className="text-sm text-gray-500">May 10, 2025</p>
+                  {relatedPosts.length > 0 ? (
+                    relatedPosts.map((relatedPost) => (
+                      <div key={relatedPost.id} className="flex gap-3">
+                        <div className="w-20 h-20 bg-gray-200 flex-shrink-0">
+                          {relatedPost.cover_image && (
+                            <img 
+                              src={relatedPost.cover_image} 
+                              alt={relatedPost.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = "https://placehold.co/80x80?text=CIC";
+                              }}
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium mb-1 hover:text-ghana-green transition-colors">
+                            <a href={`/blog/${relatedPost.slug}`}>{relatedPost.title}</a>
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            {formatDate(relatedPost.published_at || relatedPost.created_at)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No related posts found</p>
+                  )}
                 </div>
               </Card>
               
