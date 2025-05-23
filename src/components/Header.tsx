@@ -7,14 +7,11 @@ import { Button } from "@/components/ui/button";
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  // External chatbot state is managed by ClimateWiseChatbot component
-  // We'll create a function to toggle it
+  // Function to toggle chatbot visibility directly
   const toggleChatbot = () => {
-    // Get the current state from localStorage or default to false
-    const currentState = localStorage.getItem('chatbotOpen') === 'true';
-    // Toggle the state
-    localStorage.setItem('chatbotOpen', (!currentState).toString());
-    // Dispatch a custom event to notify the chatbot component
+    // Set localStorage state to true to open the chatbot
+    localStorage.setItem('chatbotOpen', 'true');
+    // Dispatch event to notify the chatbot component to open
     window.dispatchEvent(new Event('chatbotToggle'));
   };
 
@@ -93,7 +90,10 @@ const Header = () => {
             <Button 
               variant="outline" 
               className="border-ghana-green text-ghana-green hover:bg-ghana-green hover:text-white"
-              onClick={toggleChatbot}
+              onClick={() => {
+                toggleChatbot();
+                closeMenu();
+              }}
             >
               Ask ClimateWise
             </Button>

@@ -1,6 +1,6 @@
 
 import React, { ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   LayoutDashboard, 
@@ -22,6 +22,7 @@ interface AdminLayoutProps {
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await logout();
@@ -33,6 +34,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { label: "Blog Posts", icon: <FileText className="h-5 w-5" />, path: "/admin/posts" },
     { label: "Chatbot", icon: <MessageSquareText className="h-5 w-5" />, path: "/admin/chatbot" },
   ];
+
+  // Check if we're on the posts page to show a more specific link
+  const isPostsPage = location.pathname.includes('/admin/posts');
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -53,7 +57,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               <li key={i}>
                 <Link
                   to={item.path}
-                  className="flex items-center p-2 rounded-md hover:bg-gray-100 text-gray-700 hover:text-ghana-green"
+                  className={`flex items-center p-2 rounded-md hover:bg-gray-100 text-gray-700 hover:text-ghana-green ${
+                    location.pathname === item.path ? 'bg-gray-100 text-ghana-green font-medium' : ''
+                  }`}
                 >
                   {item.icon}
                   <span className="ml-3">{item.label}</span>
@@ -71,11 +77,28 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 <Link
                   to="/"
                   className="flex items-center p-2 rounded-md hover:bg-gray-100 text-gray-700 hover:text-ghana-green"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
                   <Home className="h-5 w-5" />
                   <span className="ml-3">View Main Website</span>
+                  <ExternalLink className="h-3 w-3 ml-1" />
                 </Link>
               </li>
+              {isPostsPage && (
+                <li>
+                  <Link
+                    to="/blog"
+                    className="flex items-center p-2 rounded-md hover:bg-gray-100 text-gray-700 hover:text-ghana-green"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <FileText className="h-5 w-5" />
+                    <span className="ml-3">View Blog</span>
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </Link>
+                </li>
+              )}
               <li>
                 <button
                   onClick={handleLogout}
@@ -96,9 +119,15 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           <div className="flex justify-between items-center">
             <h1 className="text-xl font-semibold text-gray-800">Admin Portal</h1>
             <div className="flex items-center space-x-3">
-              <Link to="/" className="text-gray-600 hover:text-ghana-green flex items-center">
+              <Link 
+                to="/" 
+                className="text-gray-600 hover:text-ghana-green flex items-center"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Home className="h-5 w-5 mr-1" />
                 <span>Main Site</span>
+                <ExternalLink className="h-3 w-3 ml-1" />
               </Link>
             </div>
           </div>
