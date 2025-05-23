@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Search, Edit, Trash2, Tag, ExternalLink } from "lucide-react";
+import { Loader2, Plus, Search, Edit, Trash2, Tag, ExternalLink, Download, Upload } from "lucide-react";
 import AdminLayout from "./AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -32,6 +32,40 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+// Sample climate change knowledge entries to pre-populate
+const climateChangeKnowledge = [
+  {
+    question: "What causes flooding in Ghana?",
+    answer: "Flooding in Ghana is primarily caused by heavy rainfall during the rainy season, particularly in urban areas like Accra. Poor drainage systems, unplanned urban development, improper waste disposal that blocks waterways, and the construction of settlements in flood-prone areas exacerbate flooding issues. Climate change has also intensified rainfall patterns, making floods more frequent and severe.",
+    tags: ["Flooding", "Urban", "Infrastructure", "Climate Change"],
+    source_link: "https://www.preventionweb.net/news/ghana-flooding-and-climate-change"
+  },
+  {
+    question: "How does drought impact agriculture in Ghana?",
+    answer: "Droughts in Ghana severely impact agriculture by reducing crop yields, particularly for rain-fed crops like maize, cassava, and yams. This leads to food insecurity, increased food prices, and economic hardship for farmers. Livestock also suffer from reduced water and pasture availability. The northern regions of Ghana are particularly vulnerable to drought conditions, which have become more frequent due to climate change.",
+    tags: ["Drought", "Agriculture", "Food Security", "Northern Ghana"],
+    source_link: "https://www.worldbank.org/en/news/feature/2021/07/14/innovations-help-ghana-manage-drought"
+  },
+  {
+    question: "What is Ghana's main climate adaptation strategy?",
+    answer: "Ghana's main climate adaptation strategy is outlined in the National Climate Change Policy (NCCP) and the Nationally Determined Contributions (NDCs). It includes improving agricultural resilience through climate-smart practices, enhancing water resource management, implementing coastal zone management programs to address sea-level rise, strengthening early warning systems for extreme weather events, and promoting sustainable forest management and reforestation initiatives.",
+    tags: ["Adaptation", "Policy", "Agriculture", "Water Management"],
+    source_link: "https://unfccc.int/sites/default/files/NDC/2022-06/NationallyDeterminedContribution_GHANA_20150921.pdf"
+  },
+  {
+    question: "How is climate change affecting coastal communities in Ghana?",
+    answer: "Climate change is severely impacting Ghana's coastal communities through sea-level rise, coastal erosion, saltwater intrusion into freshwater sources, and more intense storm surges. These effects are destroying homes, contaminating drinking water supplies, damaging fishing grounds, and forcing communities to relocate. Historic coastal settlements like Keta and parts of Ada have experienced significant land loss, with some areas eroding at rates of 1.5-2 meters per year.",
+    tags: ["Coastal", "Sea Level Rise", "Erosion", "Fishing Communities"],
+    source_link: "https://www.un.org/africarenewal/magazine/august-2019/ghana-coastal-communities-under-climate-threat"
+  },
+  {
+    question: "What renewable energy solutions is Ghana implementing?",
+    answer: "Ghana is implementing various renewable energy solutions including solar, wind, and hydroelectric power. The country has developed large-scale solar plants like the 20MW BXC Solar Project and the 2.5MW Navrongo Solar Power Station. Ghana has also built the Bui Hydroelectric Plant and is exploring wind power along the coastal areas. The Renewable Energy Act of 2011 provides a framework for increasing renewable energy in Ghana's energy mix to 10% by 2030.",
+    tags: ["Renewable Energy", "Solar", "Hydroelectric", "Policy"],
+    source_link: "https://energycommission.gov.gh/renewable-energy/"
+  }
+];
 
 interface ChatbotEntry {
   id: string;
@@ -60,6 +94,8 @@ const ChatbotManager = () => {
   const [selectedEntry, setSelectedEntry] = useState<ChatbotEntry | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [bulkImportText, setBulkImportText] = useState("");
   const [tagInput, setTagInput] = useState("");
   
   const [formData, setFormData] = useState({
@@ -78,10 +114,46 @@ const ChatbotManager = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      console.log("Fetched chatbot knowledge:", data);
       setEntries(data || []);
+      
+      // If no entries exist, we might want to pre-populate with some climate knowledge
+      if (data && data.length === 0) {
+        const shouldPopulate = window.confirm("Would you like to pre-populate the chatbot with basic climate change knowledge?");
+        if (shouldPopulate) {
+          populateBasicKnowledge();
+        }
+      }
     } catch (error) {
       console.error("Error fetching chatbot knowledge:", error);
       toast.error("Failed to load chatbot knowledge");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const populateBasicKnowledge = async () => {
+    try {
+      setIsLoading(true);
+      for (const entry of climateChangeKnowledge) {
+        const { error } = await supabase
+          .from("chatbot_knowledge")
+          .insert({
+            question: entry.question,
+            answer: entry.answer,
+            source_link: entry.source_link || null,
+            tags: entry.tags || null,
+            created_by: user?.id,
+          });
+          
+        if (error) throw error;
+      }
+      
+      toast.success("Added basic climate knowledge to the chatbot");
+      fetchKnowledge();
+    } catch (error) {
+      console.error("Error populating knowledge base:", error);
+      toast.error("Failed to populate knowledge base");
     } finally {
       setIsLoading(false);
     }
@@ -209,6 +281,81 @@ const ChatbotManager = () => {
     });
   };
 
+  const handleBulkImport = async () => {
+    try {
+      let importData;
+      try {
+        importData = JSON.parse(bulkImportText);
+      } catch (error) {
+        toast.error("Invalid JSON format. Please check your input.");
+        return;
+      }
+
+      if (!Array.isArray(importData)) {
+        toast.error("Import data must be an array of Q&A pairs");
+        return;
+      }
+
+      setIsLoading(true);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const item of importData) {
+        if (!item.question || !item.answer) {
+          errorCount++;
+          continue;
+        }
+
+        const { error } = await supabase
+          .from("chatbot_knowledge")
+          .insert({
+            question: item.question,
+            answer: item.answer,
+            source_link: item.source_link || null,
+            tags: item.tags || null,
+            created_by: user?.id,
+          });
+
+        if (error) {
+          console.error("Error importing entry:", error);
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      }
+
+      toast.success(`Successfully imported ${successCount} entries. Failed: ${errorCount}`);
+      fetchKnowledge();
+      setIsImportDialogOpen(false);
+      setBulkImportText("");
+    } catch (error) {
+      console.error("Error during bulk import:", error);
+      toast.error("Failed to complete bulk import");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExportKnowledge = () => {
+    const dataToExport = entries.map(entry => ({
+      question: entry.question,
+      answer: entry.answer,
+      tags: entry.tags,
+      source_link: entry.source_link
+    }));
+
+    const jsonString = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "chatbot_knowledge.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -237,7 +384,7 @@ const ChatbotManager = () => {
             answer: formData.answer,
             source_link: formData.source_link || null,
             tags: formData.tags.length > 0 ? formData.tags : null,
-            created_by: user?.id,
+            created_by: user?.id || '',
           });
 
         if (error) throw error;
@@ -265,9 +412,25 @@ const ChatbotManager = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Chatbot Manager</h1>
-          <Button onClick={handleCreateNew} className="bg-ghana-green hover:bg-ghana-green/90 flex items-center gap-2">
-            <Plus size={16} /> Add Knowledge
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsImportDialogOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Upload size={16} /> Import
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleExportKnowledge}
+              className="flex items-center gap-2"
+            >
+              <Download size={16} /> Export
+            </Button>
+            <Button onClick={handleCreateNew} className="bg-ghana-green hover:bg-ghana-green/90 flex items-center gap-2">
+              <Plus size={16} /> Add Knowledge
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="knowledge" value={activeTab} onValueChange={setActiveTab}>
@@ -500,6 +663,52 @@ const ChatbotManager = () => {
               <Button type="submit" className="bg-ghana-green hover:bg-ghana-green/90">Save</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import Knowledge Entries</DialogTitle>
+            <DialogDescription>
+              Paste your JSON array of knowledge entries
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <Label htmlFor="import-json">JSON Data</Label>
+            <Textarea
+              id="import-json"
+              value={bulkImportText}
+              onChange={(e) => setBulkImportText(e.target.value)}
+              rows={10}
+              placeholder={`[
+  {
+    "question": "What causes flooding in Ghana?",
+    "answer": "Flooding in Ghana is primarily caused by...",
+    "tags": ["Flooding", "Climate Change"],
+    "source_link": "https://example.com/article"
+  }
+]`}
+            />
+            
+            <div className="text-sm text-gray-500">
+              <p>Format: Array of objects with question, answer, optional tags array, and optional source_link.</p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsImportDialogOpen(false)}>Cancel</Button>
+            <Button 
+              type="button" 
+              onClick={handleBulkImport} 
+              className="bg-ghana-green hover:bg-ghana-green/90"
+              disabled={!bulkImportText.trim()}
+            >
+              Import
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

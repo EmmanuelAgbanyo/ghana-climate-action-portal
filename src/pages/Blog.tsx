@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Search, ArrowRight, Loader2 } from "lucide-react";
-import { blogCategories } from "../data/blogData";
+import { toast } from "@/components/ui/sonner";
 import { BlogPost } from "../types/blog";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -41,16 +41,23 @@ const Blog = () => {
     const fetchPosts = async () => {
       try {
         setIsLoading(true);
+        console.log("Fetching posts from Supabase...");
         const { data, error } = await supabase
           .from("posts")
           .select("*")
           .eq("status", "published")
           .order("published_at", { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching posts:", error);
+          throw error;
+        }
+        
+        console.log("Fetched posts:", data);
         setPosts(data || []);
       } catch (err) {
         console.error("Error fetching blog posts:", err);
+        toast.error("Failed to load blog posts. Please try again later.");
       } finally {
         setIsLoading(false);
       }
@@ -110,6 +117,7 @@ const Blog = () => {
   };
   
   const formatDate = (dateString: string) => {
+    if (!dateString) return "No date";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
@@ -122,6 +130,9 @@ const Blog = () => {
   const availableCategories = Array.from(
     new Set(posts.filter(post => post.category).map(post => post.category))
   );
+
+  console.log("Available categories:", availableCategories);
+  console.log("Filtered posts:", filteredPosts);
 
   return (
     <Layout>
@@ -149,61 +160,61 @@ const Blog = () => {
               </div>
             ) : (
               <div className="space-y-8">
-                {filteredPosts.map((post) => (
-                  <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div className="h-60 md:h-full bg-gray-200">
-                        <img 
-                          src={post.cover_image || "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=80"} 
-                          alt={post.title} 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=80";
-                          }}
-                        />
-                      </div>
-                      <div className="md:col-span-2 p-6">
-                        <div className="flex items-center gap-2 mb-3">
-                          {post.category && (
-                            <Badge className="bg-ghana-green hover:bg-ghana-green/80">
-                              {post.category}
-                            </Badge>
-                          )}
-                          <span className="text-sm text-gray-500">
-                            {formatDate(post.published_at || post.created_at)}
-                          </span>
+                {filteredPosts.length > 0 ? (
+                  filteredPosts.map((post) => (
+                    <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div className="h-60 md:h-full bg-gray-200">
+                          <img 
+                            src={post.cover_image || "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=80"} 
+                            alt={post.title} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=80";
+                            }}
+                          />
                         </div>
-                        
-                        <h3 className="text-2xl font-bold mb-3">
-                          <a 
-                            href={`/blog/${post.slug}`}
-                            className="hover:text-ghana-green transition-colors"
-                          >
-                            {post.title}
-                          </a>
-                        </h3>
-                        
-                        <p className="text-gray-600 mb-4">{post.excerpt || post.content.substring(0, 150) + "..."}</p>
-                        
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-ghana-green rounded-full"></div>
-                            <span className="text-sm font-medium">Admin</span>
+                        <div className="md:col-span-2 p-6">
+                          <div className="flex items-center gap-2 mb-3">
+                            {post.category && (
+                              <Badge className="bg-ghana-green hover:bg-ghana-green/80">
+                                {post.category}
+                              </Badge>
+                            )}
+                            <span className="text-sm text-gray-500">
+                              {formatDate(post.published_at || post.created_at)}
+                            </span>
                           </div>
                           
-                          <Button variant="link" className="text-ghana-green flex items-center gap-2 p-0" asChild>
-                            <a href={`/blog/${post.slug}`}>
-                              Read More <ArrowRight size={16} />
+                          <h3 className="text-2xl font-bold mb-3">
+                            <a 
+                              href={`/blog/${post.slug}`}
+                              className="hover:text-ghana-green transition-colors"
+                            >
+                              {post.title}
                             </a>
-                          </Button>
+                          </h3>
+                          
+                          <p className="text-gray-600 mb-4">{post.excerpt || post.content.substring(0, 150) + "..."}</p>
+                          
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-ghana-green rounded-full"></div>
+                              <span className="text-sm font-medium">Admin</span>
+                            </div>
+                            
+                            <Button variant="link" className="text-ghana-green flex items-center gap-2 p-0" asChild>
+                              <a href={`/blog/${post.slug}`}>
+                                Read More <ArrowRight size={16} />
+                              </a>
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
-
-                {filteredPosts.length === 0 && !isLoading && (
+                    </Card>
+                  ))
+                ) : (
                   <div className="text-center py-12">
                     <p className="text-gray-500">No posts found matching your criteria.</p>
                   </div>
@@ -231,19 +242,20 @@ const Blog = () => {
             <Card className="p-6">
               <h3 className="text-xl font-bold mb-4">Categories</h3>
               <div className="space-y-2">
-                {availableCategories.map((category) => (
-                  category && (
-                    <Button 
-                      key={category}
-                      variant={selectedCategory === category ? "secondary" : "outline"}
-                      className="mr-2 mb-2"
-                      onClick={() => handleCategoryClick(category)}
-                    >
-                      {category}
-                    </Button>
-                  )
-                ))}
-                {availableCategories.length === 0 && (
+                {availableCategories.length > 0 ? (
+                  availableCategories.map((category) => (
+                    category && (
+                      <Button 
+                        key={category}
+                        variant={selectedCategory === category ? "secondary" : "outline"}
+                        className="mr-2 mb-2"
+                        onClick={() => handleCategoryClick(category)}
+                      >
+                        {category}
+                      </Button>
+                    )
+                  ))
+                ) : (
                   <p className="text-gray-500">No categories available</p>
                 )}
               </div>
