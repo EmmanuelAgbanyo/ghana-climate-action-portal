@@ -52,8 +52,8 @@ const Footer: FC = () => {
             <h3 className="text-lg font-semibold mb-4">About</h3>
             <ul className="space-y-2">
               <li><Link to="/about" className="text-gray-300 hover:text-ghana-green">About Us</Link></li>
-              <li><Link to="/about#team" className="text-gray-300 hover:text-ghana-green">Our Team</Link></li>
-              <li><Link to="/about#partners" className="text-gray-300 hover:text-ghana-green">Partners</Link></li>
+              <li><Link to="/about" className="text-gray-300 hover:text-ghana-green">Our Team</Link></li>
+              <li><Link to="/about" className="text-gray-300 hover:text-ghana-green">Partners</Link></li>
               <li><Link to="/contact" className="text-gray-300 hover:text-ghana-green">Contact</Link></li>
               <li><Link to="/admin/login" className="text-gray-300 hover:text-ghana-green">Admin Login</Link></li>
             </ul>
