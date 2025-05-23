@@ -85,7 +85,8 @@ const Blog = () => {
   const filteredPosts = posts.filter(post => {
     const matchesSearch = !searchQuery || 
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (post.excerpt && post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()));
+      (post.excerpt && post.excerpt.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (post.content && post.content.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesCategory = !selectedCategory || 
       (post.category && post.category.toLowerCase() === selectedCategory.toLowerCase());
@@ -129,7 +130,7 @@ const Blog = () => {
   // Extract unique categories from posts
   const availableCategories = Array.from(
     new Set(posts.filter(post => post.category).map(post => post.category))
-  );
+  ) as string[];
 
   console.log("Available categories:", availableCategories);
   console.log("Filtered posts:", filteredPosts);

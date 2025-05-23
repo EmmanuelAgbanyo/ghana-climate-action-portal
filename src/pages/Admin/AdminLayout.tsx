@@ -71,10 +71,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 <Link
                   to="/"
                   className="flex items-center p-2 rounded-md hover:bg-gray-100 text-gray-700 hover:text-ghana-green"
-                  target="_blank"
                 >
-                  <ExternalLink className="h-5 w-5" />
-                  <span className="ml-3">View Website</span>
+                  <Home className="h-5 w-5" />
+                  <span className="ml-3">View Main Website</span>
                 </Link>
               </li>
               <li>
@@ -97,7 +96,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           <div className="flex justify-between items-center">
             <h1 className="text-xl font-semibold text-gray-800">Admin Portal</h1>
             <div className="flex items-center space-x-3">
-              <Link to="/" target="_blank" className="text-gray-600 hover:text-ghana-green flex items-center">
+              <Link to="/" className="text-gray-600 hover:text-ghana-green flex items-center">
                 <Home className="h-5 w-5 mr-1" />
                 <span>Main Site</span>
               </Link>

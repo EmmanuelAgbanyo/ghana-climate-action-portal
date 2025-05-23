@@ -70,12 +70,18 @@ const Posts = () => {
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
+      console.log("Fetching posts from Supabase...");
       const { data, error } = await supabase
         .from("posts")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching posts:", error);
+        throw error;
+      }
+      
+      console.log("Fetched posts:", data);
       setPosts(data || []);
     } catch (error) {
       console.error("Error fetching posts:", error);
@@ -131,7 +137,10 @@ const Posts = () => {
         .delete()
         .eq("id", selectedPost.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error deleting post:", error);
+        throw error;
+      }
       
       toast.success("Post deleted successfully");
       fetchPosts();
@@ -171,13 +180,20 @@ const Posts = () => {
     const slug = formData.slug || generateSlugFromTitle(formData.title);
     
     try {
+      const postData = {
+        ...formData,
+        slug,
+        author_id: user?.id || '',
+      };
+      
+      console.log("Saving post data:", postData);
+      
       if (selectedPost) {
         // Update existing post
         const { error } = await supabase
           .from("posts")
           .update({
-            ...formData,
-            slug,
+            ...postData,
             updated_at: new Date().toISOString(),
             published_at: formData.status === "published" 
               ? (selectedPost.status === "published" ? selectedPost.created_at : new Date().toISOString()) 
@@ -185,20 +201,26 @@ const Posts = () => {
           })
           .eq("id", selectedPost.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error updating post:", error);
+          throw error;
+        }
         toast.success("Post updated successfully");
       } else {
         // Create new post
-        const { error } = await supabase
+        const { error, data } = await supabase
           .from("posts")
           .insert({
-            ...formData,
-            slug,
-            author_id: user?.id || '',
+            ...postData,
             published_at: formData.status === "published" ? new Date().toISOString() : null,
-          });
+          })
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error creating post:", error);
+          throw error;
+        }
+        console.log("Post created successfully:", data);
         toast.success("Post created successfully");
       }
       
@@ -251,7 +273,7 @@ const Posts = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Select value={statusFilter} onValueChange={handleFilterChange}>
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -271,14 +293,25 @@ const Posts = () => {
           </div>
         ) : (
           <div className="grid gap-4">
-            {filteredPosts.length === 0 ? (
+            {posts.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-gray-500">
                   {searchQuery || statusFilter !== 'all' ? "No posts match your filters" : "No posts found. Create your first post!"}
                 </CardContent>
               </Card>
             ) : (
-              filteredPosts.map((post) => (
+              posts
+                .filter(post => {
+                  // Filter by search query
+                  const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (post.excerpt && post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()));
+                  
+                  // Filter by status
+                  const matchesStatus = statusFilter === 'all' || post.status === statusFilter;
+                  
+                  return matchesSearch && matchesStatus;
+                })
+                .map((post) => (
                 <Card key={post.id} className="overflow-hidden">
                   <CardContent className="p-0">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between p-4 gap-4">
@@ -306,7 +339,7 @@ const Posts = () => {
                           variant="outline" 
                           size="sm" 
                           className="flex items-center gap-1"
-                          onClick={() => handlePreviewPost(post)}
+                          onClick={() => window.open(`/blog/${post.slug}`, '_blank')}
                         >
                           <Eye className="h-4 w-4" />
                           <span className="hidden sm:inline">Preview</span>
